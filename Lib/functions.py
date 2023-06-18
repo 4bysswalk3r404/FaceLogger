@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import time
 import dlib
+from math import gcd
 
 class Default:
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -44,15 +45,12 @@ class FrameRate:
         cv2.putText(frame, fps_text, (10, 20), Default.font, 0.5, (255, 0, 255), 1)
         # print(self._fps, end=' ' * 10 + '\r')
 
-def getImageRect(img: cv2.Mat, rect) -> cv2.Mat:
-    x = rect.left()
-    y = rect.top()
-    return getImage(img, x, y, rect.right()-x, rect.bottom()-y)
-def getImageTup(img: cv2.Mat, tup) -> cv2.Mat:
-    return getImage(img, tup[0], tup[1], tup[2], tup[3])
-def getImage(img: cv2.Mat ,x,y,w,h) -> cv2.Mat:
-    return img[y:y+h, x:x+w]
-
+def getImage(img : cv2.Mat, topleft : tuple[2] | list[2], bottomright : tuple[2] | list[2]) -> cv2.Mat:
+    """returns the image section from the top left corner to the bottom left corner
+    takes (left, top), (right, bottom) and returns cv2.Mat"""
+    left, top = topleft
+    right, bottom = bottomright
+    return img[top:bottom, left:right]
 def addImage(base_image, overlay_image, x, y):
     overlay_image_rgb = cv2.cvtColor(overlay_image, cv2.COLOR_GRAY2RGB)
 
@@ -66,25 +64,7 @@ def addImage(base_image, overlay_image, x, y):
     base_image[y:y+overlay_height, x:x+overlay_width] = overlay_image_rgb
     return base_image
 
-def rect_to_corners(rect):
-	x1 = rect.left()
-	y1 = rect.top()
-	x2 = rect.right()
-	y2 = rect.bottom()
-	return (x1, y1), (x2, y2)
-
-def rect_to_bb(rect):
-	# take a bounding predicted by dlib and convert it
-	# to the format (x, y, w, h) as we would normally do
-	# with OpenCV
-	x = rect.left()
-	y = rect.top()
-	w = rect.right() - x
-	h = rect.bottom() - y
-	# return a tuple of (x, y, w, h)
-	return (x, y, w, h)
-
-def shape_to_np(shape, dtype="int"):
+def landmarksToPoints(shape, dtype="int"):
 	# initialize the list of (x, y)-coordinates
 	coords = np.zeros((68, 2), dtype=dtype)
 	# loop over the 68 facial landmarks and convert them
@@ -93,21 +73,54 @@ def shape_to_np(shape, dtype="int"):
 		coords[i] = (shape.part(i).x, shape.part(i).y)
 	# return the list of (x, y)-coordinates
 	return coords
-
-def getRect(points):
+def rectFromLandmarks(points):
     top = 0
     left = 0
     bottom = 999
     right = 999
     for (x, y) in points:
-        if y > top: top = y
-        if y < bottom: bottom = y
-        if x > left: left = x
-        if x < right: right = x
+        top = max(top, y)
+        bottom = min(bottom, y)
+        left = max(left, x)
+        right = min(right, x)
     return (left, top), (right, bottom)
 
-def getImageCorners(img: cv2.Mat, topLeft : tuple, bottomRight : tuple) -> cv2.Mat:
-    """x1, y1, x2, y2"""
-    w = bottomRight[0] - topLeft[0]
-    h = bottomRight[1] - topLeft[1]
-    return getImage(img, topLeft[0], topLeft[1], w, h)
+def imageAspectRatioGCD(image : cv2.Mat) -> tuple[2]:
+    #800x600
+    """takes in an image and returns the lowest possible aspect ratio"""
+    height, width, _ = image.shape
+    denominator = gcd(width, height)
+    return (width//denominator, height//denominator)
+def scaleImageMaxTo(image : cv2.Mat, maxLength : int) -> cv2.Mat:
+    height, width, _ = image.shape
+    longest = max(height, width)
+    shortWidth = width/longest
+    shortHeight = height/longest
+    scaledSize = (int(shortWidth * maxLength), int(shortHeight * maxLength))
+    return cv2.resize(image, scaledSize)
+
+# def faceCorners(rect) -> tuple[2]:
+#     topleft, bottomright = (rect[3], rect[0]), (rect[2], rect[1])
+#     return topleft, bottomright
+def dlibCorners(rect) -> tuple[2]:
+    """takes a rect returned from dlib and returns 
+    the top left corner, and the bottom right corner"""
+    left = rect.left()
+    top = rect.top()
+    right = rect.right()
+    bottom = rect.bottom()
+    return (left, top), (right, bottom)
+def cv2Corners(rect) -> tuple[2]:
+    """cv2's detectMultiScale return a list of rectangles
+    in the form [left, top, width, height]. This function
+    takes that, and returnes (topleft, bottomright)"""
+    x, y, width, height = rect
+    topleft = (x, y)
+    bottomright = (x + width, y + height)
+    return topleft, bottomright
+
+if __name__ == "__main__":
+    image = cv2.imread('../group.png')
+    image = scaleImageMaxTo(image, 800)
+    cv2.imshow('image', image)
+    cv2.waitKey(0)

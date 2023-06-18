@@ -12,7 +12,8 @@ gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 rects = faceDetector.detectMultiScale(gray)
 
 master = Master.Master()
-master.addEncoding(cv2.imread('.\\obama.png'), 'obama')
+# master.addEncoding(cv2.imread('.\\obama.png'), 'obama')
+master.initDatabase('.\\faces')
 
 for i, rect in enumerate(rects):
     topleft = rect[2:]

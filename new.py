@@ -17,6 +17,7 @@ frontal_face_cascade = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor(p)
 
 master = Master.Master()
+master.initDatabase('./faces')
 
 cap = cv2.VideoCapture(".\\video1.mp4")
 fps = FrameRate()
@@ -33,9 +34,9 @@ while True:
     lastCenters_temp = []
     for i, rect in enumerate(rects):
         shape = predictor(gray, rect)
-        shape = shape_to_np(shape)
+        shape = rectFromLandmarks(shape)
 
-        topLeft, bottomRight = rect_to_corners(rect)
+        topLeft, bottomRight = dlibCorners(rect)
 
         #getting the center of the face
         width = bottomRight[0] - topLeft[0]
@@ -45,7 +46,6 @@ while True:
         center = (x,y)
 
         cv2.circle(showFrame, center, 3, (255,0,0))
-        name = str(scores[i])
 
         found = False
         for lastCenter in lastCenters:
@@ -54,7 +54,7 @@ while True:
                 found = True
                 continue
         if not found:
-            face = getImageRect(frame, rect)
+            face = getImage(frame, rect)
             face = cv2.resize(face, (256, 256))
             name, masterKnown = master.compareToDatabase(face)
             if not masterKnown:
