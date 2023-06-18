@@ -99,9 +99,10 @@ def scaleImageMaxTo(image : cv2.Mat, maxLength : int) -> cv2.Mat:
     scaledSize = (int(shortWidth * maxLength), int(shortHeight * maxLength))
     return cv2.resize(image, scaledSize)
 
-# def faceCorners(rect) -> tuple[2]:
-#     topleft, bottomright = (rect[3], rect[0]), (rect[2], rect[1])
-#     return topleft, bottomright
+def faceCorners(rect) -> tuple[2]:
+    """returns topleft and bottomright from face_recognition type rect"""
+    top, right, bottom, left = rect
+    return (left, top), (right, bottom)
 def dlibCorners(rect) -> tuple[2]:
     """takes a rect returned from dlib and returns 
     the top left corner, and the bottom right corner"""

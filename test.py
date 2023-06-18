@@ -1,65 +1,41 @@
-import face_recognition
-import timeit
 import cv2
 import dlib
+import Lib.functions as functions
+import master as Master
 
 image = cv2.imread('./group.png')
-image = cv2.resize(image, (600, 400))
-gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+image = functions.scaleImageMaxTo(image, 1000)
+showimage = image.copy()
+gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
+master = Master.Master()
+master.initDatabase('./faces')
+
+p = ".\\Lib\\shape_predictor_68_face_landmarks.dat"
+predictor = dlib.shape_predictor(p)
 dlibdetector = dlib.get_frontal_face_detector()
-cvdetector = cv2.CascadeClassifier("./Lib/haarcascade_frontalface_default.xml")
+print('finishing initializing detectors')
 
-fr = lambda: face_recognition.face_locations(gray)
-cv = lambda: cvdetector.detectMultiScale(rgb, minSize=(50, 50))
-dl = lambda: dlibdetector.run(rgb, 1)
+dlLocations, scores, _ = dlibdetector.run(image, 1)
+scores = [round(score, 4) for score in scores]
+for i, rect in enumerate(dlLocations):
+    topleft, bottomright = functions.dlibCorners(rect)
+    cv2.rectangle(showimage, topleft, bottomright, (0,0,0), 2)
 
-def dlibCorners(rect) -> tuple[2]:
-    """takes a rect returned from dlib and returns 
-    the top left corner, and the bottom right corner"""
-    left = rect.left()
-    top = rect.top()
-    right = rect.right()
-    bottom = rect.bottom()
-    return (left, top), (right, bottom)
+    shape = predictor(gray, rect)
+    landmarks = functions.landmarksToPoints(shape)
+    for landmark in landmarks:
+        cv2.circle(showimage, landmark, 1, (256, 0, 0))
+    cv2.putText(showimage, str(scores[i]), topleft, cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
+ 
+    face = functions.getImage(image, topleft, bottomright)
+    face = cv2.resize(face, (256, 256))
+    cv2.imshow(f'face{i}', face)
+    name, _ = master.compareToDatabase(face)
+    cv2.putText(showimage, name, (topleft[0], bottomright[1]), cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 255), 1)
+ 
+    # cv2.imwrite(f'./faces/face{i}.png', face)
 
-def faceCorners(rect) -> tuple[2]:
-    topleft, bottomright = (rect[3], rect[0]), (rect[2], rect[1])
-    return topleft, bottomright
-
-def cv2Corners(rect) -> tuple[2]:
-    """cv2's detectMultiScale return a list of rectangles
-    in the form [left, top, width, height]. This function
-    takes that, and returnes (topleft, bottomright)"""
-    x, y, width, height = rect
-    topleft = (x, y)
-    bottomright = (x + width, y + height)
-    return topleft, bottomright
-
-print("face recognition:    %f", timeit.timeit(fr, number=30))
-print("opencv: %f" % timeit.timeit(cv, number=30))
-print("dlib: %f" % timeit.timeit(dl, number=30))
-
-frLocations = fr()
-frimage = image.copy()
-for frrect in frLocations:
-    topleft, bottomright = faceCorners(frrect)
-    cv2.rectangle(frimage, topleft, bottomright, (0,0,0), 2)
-cv2.imshow('frimage', frimage)
-
-cvLocations = cv()
-cvimage = image.copy()
-for cvrect in cvLocations:
-    topleft, bottomright = cv2Corners(cvrect)
-    cv2.rectangle(cvimage, topleft, bottomright, (0,0,0), 2)
-cv2.imshow('cvimage', cvimage)
-
-dlLocations, _, _ = dl()
-dlimage = image.copy()
-for dlrect in dlLocations:
-    topleft, bottomright = dlibCorners(dlrect)
-    cv2.rectangle(dlimage, topleft, bottomright, (0,0,0), 2)
-cv2.imshow('dlimage', dlimage)
+cv2.imshow('showimage', showimage)
 
 cv2.waitKey(0)
