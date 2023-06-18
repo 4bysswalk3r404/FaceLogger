@@ -44,13 +44,6 @@ class FrameRate:
         cv2.putText(frame, fps_text, (10, 20), Default.font, 0.5, (255, 0, 255), 1)
         # print(self._fps, end=' ' * 10 + '\r')
 
-def whiteNoise(width, height):
-    # Generate a NumPy array of random values with the specified width and height
-    white_noise = np.random.randint(0, 256, (height, width))
-
-    # Convert the NumPy array to a grayscale image
-    return np.uint8(white_noise)
-
 def getImageRect(img: cv2.Mat, rect) -> cv2.Mat:
     x = rect.left()
     y = rect.top()
@@ -72,6 +65,13 @@ def addImage(base_image, overlay_image, x, y):
 
     base_image[y:y+overlay_height, x:x+overlay_width] = overlay_image_rgb
     return base_image
+
+def rect_to_corners(rect):
+	x1 = rect.left()
+	y1 = rect.top()
+	x2 = rect.right()
+	y2 = rect.bottom()
+	return (x1, y1), (x2, y2)
 
 def rect_to_bb(rect):
 	# take a bounding predicted by dlib and convert it
@@ -106,17 +106,8 @@ def getRect(points):
         if x < right: right = x
     return (left, top), (right, bottom)
 
-
-def timetest(func, args):
-    import time
-    speed = time.time()
-    ret = func(*args)
-    return ret, time.time() - speed
-
-# def test():
-#     data1 = timetest(getmetadata, (os.path.join(facefolder, "obama.png"), ))[1]
-#     data2 = timetest(json.load, (open(os.path.join(facefolder, "test.txt")), ))[1]
-#     return (data1, data2)
-
-# for i in range(10):
-#     print(test())
+def getImageCorners(img: cv2.Mat, topLeft : tuple, bottomRight : tuple) -> cv2.Mat:
+    """x1, y1, x2, y2"""
+    w = bottomRight[0] - topLeft[0]
+    h = bottomRight[1] - topLeft[1]
+    return getImage(img, topLeft[0], topLeft[1], w, h)

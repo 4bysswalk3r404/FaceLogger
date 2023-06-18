@@ -1,7 +1,7 @@
 import cv2
 import dlib
 import face_recognition
-from functions import *
+from Lib.functions import *
 
 from master import Master
 import math
